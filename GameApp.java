@@ -1,3 +1,5 @@
+import javafx.animation.Animation;
+import javafx.animation.AnimationTimer;
 import javafx.application.Application;
 import javafx.event.EventHandler;
 import javafx.geometry.Point2D;
@@ -21,27 +23,26 @@ import javafx.stage.Stage;
 
 import java.util.HashSet;
 import java.util.Set;
-
 interface Updatable{
     void update();
 }
-
 abstract class GameObject extends Group {
-    // Any state or behavior in this class
-    // should apply to all game object this.
-    // For example, the helicopter can move,
-    // while a pond cannot. Consequently,
-    // you would not include anything regarding
-    // movement in this class.
     Translate translate;
     Scale scale;
     Rotate rotate;
-
-    public GameObject() {
+    Point2D p,v;
+    double omega, theta;
+    public GameObject(Group parent, Point2D p0, Point2D v0, double theta0,double omega0) {
         translate = new Translate();
         scale = new Scale();
         rotate = new Rotate();
         this.getTransforms().addAll(translate,scale,rotate);
+        parent.getChildren().add(this);
+
+        p = p0;
+        v = v0;
+        omega = omega0;
+        theta = theta0;
     }
     public void rotate(double degree) {
         rotate.setAngle(degree);
@@ -53,28 +54,36 @@ abstract class GameObject extends Group {
         scale.setY(scaleY);
     }
     public void translate(double transX, double transY) {
-        translate.setX(transX);
-        translate.setY(transY);
+        translate.setX(transX); // l r
+        translate.setY(transY); // u d
     }
     void add(Node node) {this.getChildren().add(node);}
-    public void update(){
-        for(Node n : getChildren()){
-            if(n instanceof Updatable)
-                ((Updatable)n).update();
-        }
+    public void update(double delta) {
+        p = p.add(v.multiply(delta));
+        theta = (theta + omega * delta) % (Math.PI * 2);
+
+        getTransforms().clear();
+        translate(p.getX(),p.getY());
+        rotate(Math.toDegrees(theta));
+        this.getTransforms().addAll(translate,scale,rotate);
     }
+    /*
+    static Point2D vecAngle(double angle, double mag) {
+        return new Point2D(Math.cos(angle), Math.sin(angle)).multiply(mag);
+    }
+
+     */
+
 }
 class Pond extends Circle {
-    public Pond() {
-        //setRadius(40);
-        //setCenterX(300);
-        //setCenterY(240);
+    public Pond( double sizeX, double sizeY) {
+        setRadius(Math.random()*25*Math.PI);
+        setCenterX(rand()*sizeX/2);
+        setCenterY(rand()*sizeY/2);
         setStroke(Color.BLUE);
         setFill(Color.BLUE);
     }
-    public void update() {
 
-    }
     public double rand() {
         double toReturn =  Math.random() *
                 (Math.random() - Math.random()) + Math.random();
@@ -84,10 +93,10 @@ class Pond extends Circle {
     }
 }
 class Cloud extends Circle {
-    public Cloud() {
-        //setRadius(rand());
-        //setCenterX(100);
-        //setCenterY(140);
+    public Cloud(double sizeX, double sizeY) {
+        setRadius(Math.random()*25*Math.PI);
+        setCenterX(rand()*sizeX/2);
+        setCenterY(rand()*sizeY/2);
         setStroke(Color.GRAY);
         setFill(Color.GRAY);
     }
@@ -110,43 +119,52 @@ class Helipad extends Rectangle {
     }
 }
 class Helicopter extends GameObject {
-    //Line xAxis;
     Ellipse myhelicopter;
+    double thrust = 160;
     Text text = new Text("100 %");
-    public Helicopter() {
+    public Helicopter(Group parent, Point2D p) {
         //xAxis = new Line(-125,0,125,0);
+        super(parent, p, Point2D.ZERO, 0,0);
         myhelicopter = new Ellipse();
+        add(myhelicopter);
         myhelicopter.setFill(Color.MAGENTA);
         myhelicopter.setStroke(Color.MAGENTA);
-        myhelicopter.setRadiusX(15);
+        myhelicopter.setRadiusX(70);
         myhelicopter.setRadiusY(15);
+        //getTransforms().add(new Scale(30,30));
         myhelicopter.setCenterX(200);
         myhelicopter.setCenterY(300);
+        update(0,0,0);
+
         text.setFont(Font.font(20));
         text.setFill(Color.WHITE);
         text.setX(200);
         text.setY(290);
-        add(myhelicopter);
         add(text);
     }
-}
-
-class PondAndCloud extends GameObject{
-    Pond pond = new Pond();
-    Cloud clouds = new Cloud();
-    public void setInfo(double sizeX, double sizeY) {
-        clouds.setRadius(Math.random()*25*Math.PI);
-        clouds.setCenterX(clouds.rand()*sizeX/2);
-        clouds.setCenterY(clouds.rand()*sizeY/2);
-
-        pond.setRadius(Math.random()*25*Math.PI);
-        pond.setCenterX(pond.rand()*sizeX/2);
-        pond.setCenterY(pond.rand()*sizeY/2);
+    public void update(double delta, double omega, double throttle) {
+        if (throttle !=0) {
+            //Point2D acc = vecAngle(theta, thrust * throttle);
+            //v = v.add(acc.multiply((delta)));
+            v = v.add((v.multiply(delta)));
+        }
+        else {
+            v = v.multiply(1 - 0.2 * delta);
+            this.omega = omega;
+            super.update(delta);
+        }
     }
-    public PondAndCloud() {
-        add(pond);
-        add(clouds);
-
+    public void left() {
+        System.out.println("left");
+    }
+    public void right() {
+        System.out.println("right");
+    }
+    public void up() {
+        System.out.println("up");
+    }
+    public void down() {
+        System.out.println("down");
     }
 }
 class Game {
@@ -154,11 +172,15 @@ class Game {
     Point2D size = new Point2D(400,600);
     Scene scene = new Scene(root,size.getX(),size.getY());
 
-    PondAndCloud pc = new PondAndCloud();
     Helipad helipad = new Helipad();
-    Helicopter helicopter = new Helicopter();
+    Helicopter helicopter;
+    Group gGame = new Group();
+
+    Pond pond = new Pond(size.getX(),size.getY());
+    Cloud clouds = new Cloud(size.getX(),size.getY());
     public Game() {
         root.setStyle("-fx-background-color: black;");
+        helicopter = new Helicopter(gGame, size.multiply((0.5)));
 
         helipad.setX(size.getX()/2.5);
         helipad.setY(size.getY() - 120);
@@ -166,10 +188,9 @@ class Game {
         helipad.inner.setCenterX((size.getX() +125)/2.5);
         helipad.inner.setCenterY(size.getY() - 70);
 
-        pc.setInfo(size.getX(),size.getY());
 
-        root.getChildren().addAll(pc,
-                helipad,helipad.inner, helicopter,
+        root.getChildren().addAll(gGame,helipad,helipad.inner,
+                helicopter, pond, clouds,
                 helicopter.myhelicopter,
                 helicopter.text);
         helicopter.scale.setX(20);
@@ -193,13 +214,19 @@ public class GameApp extends Application {
         newGame.scene.setOnKeyPressed(new EventHandler<KeyEvent>() {
             public void handle(KeyEvent event) {
                 keysDown.add(event.getCode());
+                switch(event.getCode()) {
+                    case LEFT: newGame.helicopter.left(); break;
+                    case RIGHT: newGame.helicopter.right(); break;
+                    case UP: newGame.helicopter.up(); break;
+                    case DOWN: newGame.helicopter.down(); break;
+                    default:
+                }
             }
         });
         newGame.scene.setOnKeyReleased(new EventHandler<KeyEvent>() {
             public void handle(KeyEvent event) {
                 keysDown.remove(event.getCode());
-            }
-        });
+            }});
 
         stage.show();
     }
