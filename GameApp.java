@@ -1,11 +1,14 @@
-import javafx.animation.Animation;
 import javafx.animation.AnimationTimer;
 import javafx.application.Application;
+import javafx.beans.property.BooleanProperty;
+import javafx.beans.property.SimpleBooleanProperty;
 import javafx.event.EventHandler;
 import javafx.geometry.Point2D;
 import javafx.scene.Group;
 import javafx.scene.Node;
 import javafx.scene.Scene;
+import javafx.scene.image.Image;
+import javafx.scene.image.ImageView;
 import javafx.scene.input.KeyCode;
 import javafx.scene.input.KeyEvent;
 import javafx.scene.layout.Pane;
@@ -23,26 +26,27 @@ import javafx.stage.Stage;
 
 import java.util.HashSet;
 import java.util.Set;
+
 interface Updatable{
     void update();
 }
+
 abstract class GameObject extends Group {
+    // Any state or behavior in this class
+    // should apply to all game object this.
+    // For example, the helicopter can move,
+    // while a pond cannot. Consequently,
+    // you would not include anything regarding
+    // movement in this class.
     Translate translate;
     Scale scale;
     Rotate rotate;
-    Point2D p,v;
-    double omega, theta;
-    public GameObject(Group parent, Point2D p0, Point2D v0, double theta0,double omega0) {
+
+    public GameObject() {
         translate = new Translate();
         scale = new Scale();
         rotate = new Rotate();
         this.getTransforms().addAll(translate,scale,rotate);
-        parent.getChildren().add(this);
-
-        p = p0;
-        v = v0;
-        omega = omega0;
-        theta = theta0;
     }
     public void rotate(double degree) {
         rotate.setAngle(degree);
@@ -54,25 +58,10 @@ abstract class GameObject extends Group {
         scale.setY(scaleY);
     }
     public void translate(double transX, double transY) {
-        translate.setX(transX); // l r
-        translate.setY(transY); // u d
+        translate.setX(transX);
+        translate.setY(transY);
     }
     void add(Node node) {this.getChildren().add(node);}
-    public void update(double delta) {
-        p = p.add(v.multiply(delta));
-        theta = (theta + omega * delta) % (Math.PI * 2);
-
-        getTransforms().clear();
-        translate(p.getX(),p.getY());
-        rotate(Math.toDegrees(theta));
-        this.getTransforms().addAll(translate,scale,rotate);
-    }
-    /*
-    static Point2D vecAngle(double angle, double mag) {
-        return new Point2D(Math.cos(angle), Math.sin(angle)).multiply(mag);
-    }
-
-     */
 
 }
 class Pond extends Circle {
@@ -83,7 +72,9 @@ class Pond extends Circle {
         setStroke(Color.BLUE);
         setFill(Color.BLUE);
     }
+    public void update() {
 
+    }
     public double rand() {
         double toReturn =  Math.random() *
                 (Math.random() - Math.random()) + Math.random();
@@ -119,46 +110,38 @@ class Helipad extends Rectangle {
     }
 }
 class Helicopter extends GameObject {
+    //Line xAxis;
     Ellipse myhelicopter;
-    double thrust = 160;
     Text text = new Text("100 %");
-    public Helicopter(Group parent, Point2D p) {
+    int myX = 10;
+    public Helicopter() {
         //xAxis = new Line(-125,0,125,0);
-        super(parent, p, Point2D.ZERO, 0,0);
+        super();
         myhelicopter = new Ellipse();
-        add(myhelicopter);
         myhelicopter.setFill(Color.MAGENTA);
         myhelicopter.setStroke(Color.MAGENTA);
-        myhelicopter.setRadiusX(70);
+        myhelicopter.setRadiusX(15);
         myhelicopter.setRadiusY(15);
-        //getTransforms().add(new Scale(30,30));
         myhelicopter.setCenterX(200);
         myhelicopter.setCenterY(300);
-        update(0,0,0);
-
         text.setFont(Font.font(20));
         text.setFill(Color.WHITE);
         text.setX(200);
         text.setY(290);
+        add(myhelicopter);
         add(text);
     }
-    public void update(double delta, double omega, double throttle) {
-        if (throttle !=0) {
-            //Point2D acc = vecAngle(theta, thrust * throttle);
-            //v = v.add(acc.multiply((delta)));
-            v = v.add((v.multiply(delta)));
-        }
-        else {
-            v = v.multiply(1 - 0.2 * delta);
-            this.omega = omega;
-            super.update(delta);
-        }
-    }
+
     public void left() {
+        myX+=10;
         System.out.println("left");
+        translate.setX(myX);
+
     }
     public void right() {
+        myX-=10;
         System.out.println("right");
+        translate.setX(myX);
     }
     public void up() {
         System.out.println("up");
@@ -167,20 +150,31 @@ class Helicopter extends GameObject {
         System.out.println("down");
     }
 }
+class Background extends Pane {
+    Image image = new Image("file:Back.jpg");
+    ImageView iView = new ImageView(image);
+    public void Background() {
+        iView.setFitHeight(600);
+        iView.setFitWidth(400);
+    }
+}
 class Game {
     Pane root = new Pane();
     Point2D size = new Point2D(400,600);
     Scene scene = new Scene(root,size.getX(),size.getY());
+    Background background = new Background();
 
     Helipad helipad = new Helipad();
-    Helicopter helicopter;
-    Group gGame = new Group();
-
+    Helicopter helicopter = new Helicopter();
     Pond pond = new Pond(size.getX(),size.getY());
     Cloud clouds = new Cloud(size.getX(),size.getY());
+
+    BooleanProperty left = new SimpleBooleanProperty();
+    BooleanProperty right = new SimpleBooleanProperty();
+    BooleanProperty up = new SimpleBooleanProperty();
+    BooleanProperty down = new SimpleBooleanProperty();
     public Game() {
         root.setStyle("-fx-background-color: black;");
-        helicopter = new Helicopter(gGame, size.multiply((0.5)));
 
         helipad.setX(size.getX()/2.5);
         helipad.setY(size.getY() - 120);
@@ -189,12 +183,56 @@ class Game {
         helipad.inner.setCenterY(size.getY() - 70);
 
 
-        root.getChildren().addAll(gGame,helipad,helipad.inner,
+        root.getChildren().addAll(helipad,helipad.inner,
                 helicopter, pond, clouds,
                 helicopter.myhelicopter,
                 helicopter.text);
         helicopter.scale.setX(20);
 
+        AnimationTimer loop = new AnimationTimer() {
+            double old = -1;
+            double elapsedTime = 0;
+            double speed = 2;
+            @Override
+            public void handle(long nano) {
+                if (old < 0) old = nano;
+                double delta = (nano - old) / 1e9;
+
+                old = nano;
+                elapsedTime += delta;
+                if (left.get())
+                    helicopter.myhelicopter.setLayoutX(helicopter.myhelicopter.getLayoutX() - speed);
+                else if (right.get())
+                    helicopter.myhelicopter.setLayoutX(helicopter.myhelicopter.getLayoutX() + speed);
+                else if (up.get())
+                    helicopter.myhelicopter.setLayoutY(helicopter.myhelicopter.getLayoutY() - speed);
+                else if (down.get())
+                    helicopter.myhelicopter.setLayoutY(helicopter.myhelicopter.getLayoutY() + speed);
+                //move = 4 * (key(KeyCode.LEFT) - key(KeyCode.RIGHT));
+
+            }
+        };
+        scene.setOnKeyPressed(e -> {
+            if(e.getCode() == KeyCode.LEFT)
+                left.set(true);
+            if(e.getCode() == KeyCode.RIGHT)
+                right.set(true);
+            if(e.getCode() == KeyCode.UP)
+                up.set(true);
+            if(e.getCode() == KeyCode.DOWN)
+                down.set(true);
+        });
+        scene.setOnKeyReleased(e -> {
+            if(e.getCode() == KeyCode.LEFT)
+                left.set(false);
+            if(e.getCode() == KeyCode.RIGHT)
+                right.set(false);
+            if(e.getCode() == KeyCode.UP)
+                up.set(false);
+            if(e.getCode() == KeyCode.DOWN)
+                down.set(false);
+        });
+        loop.start();
     }
 }
 
@@ -210,23 +248,6 @@ public class GameApp extends Application {
         //newGame.scene.setFill(Color.WHITE);
         stage.setScene(newGame.scene);
         stage.setTitle("mAkE iT rAiN");
-
-        newGame.scene.setOnKeyPressed(new EventHandler<KeyEvent>() {
-            public void handle(KeyEvent event) {
-                keysDown.add(event.getCode());
-                switch(event.getCode()) {
-                    case LEFT: newGame.helicopter.left(); break;
-                    case RIGHT: newGame.helicopter.right(); break;
-                    case UP: newGame.helicopter.up(); break;
-                    case DOWN: newGame.helicopter.down(); break;
-                    default:
-                }
-            }
-        });
-        newGame.scene.setOnKeyReleased(new EventHandler<KeyEvent>() {
-            public void handle(KeyEvent event) {
-                keysDown.remove(event.getCode());
-            }});
 
         stage.show();
     }
