@@ -113,7 +113,6 @@ class Helicopter extends GameObject {
     //Line xAxis;
     Ellipse myhelicopter;
     Text text = new Text("100 %");
-    int myX = 10;
     public Helicopter() {
         //xAxis = new Line(-125,0,125,0);
         super();
@@ -122,32 +121,10 @@ class Helicopter extends GameObject {
         myhelicopter.setStroke(Color.MAGENTA);
         myhelicopter.setRadiusX(15);
         myhelicopter.setRadiusY(15);
-        myhelicopter.setCenterX(200);
-        myhelicopter.setCenterY(300);
         text.setFont(Font.font(20));
         text.setFill(Color.WHITE);
-        text.setX(200);
-        text.setY(290);
         add(myhelicopter);
         add(text);
-    }
-
-    public void left() {
-        myX+=10;
-        System.out.println("left");
-        translate.setX(myX);
-
-    }
-    public void right() {
-        myX-=10;
-        System.out.println("right");
-        translate.setX(myX);
-    }
-    public void up() {
-        System.out.println("up");
-    }
-    public void down() {
-        System.out.println("down");
     }
 }
 class Background extends Pane {
@@ -174,6 +151,7 @@ class Game {
     BooleanProperty up = new SimpleBooleanProperty();
     BooleanProperty down = new SimpleBooleanProperty();
     public Game() {
+        init(root);
         root.setStyle("-fx-background-color: black;");
 
         helipad.setX(size.getX()/2.5);
@@ -182,12 +160,19 @@ class Game {
         helipad.inner.setCenterX((size.getX() +125)/2.5);
         helipad.inner.setCenterY(size.getY() - 70);
 
-
+/*
         root.getChildren().addAll(helipad,helipad.inner,
                 helicopter, pond, clouds,
                 helicopter.myhelicopter,
                 helicopter.text);
-        helicopter.scale.setX(20);
+
+ */
+        helicopter.setLayoutX(size.getX()/2);
+        helicopter.setLayoutY(size.getY()/2);
+        helicopter.text.setX(size.getX()/10 - 50);
+        helicopter.text.setY(size.getY()/10);
+
+        //helicopter.scale.setX(20);
 
         AnimationTimer loop = new AnimationTimer() {
             double old = -1;
@@ -201,15 +186,13 @@ class Game {
                 old = nano;
                 elapsedTime += delta;
                 if (left.get())
-                    helicopter.myhelicopter.setLayoutX(helicopter.myhelicopter.getLayoutX() - speed);
+                    helicopter.setLayoutX(helicopter.getLayoutX() - speed);
                 else if (right.get())
-                    helicopter.myhelicopter.setLayoutX(helicopter.myhelicopter.getLayoutX() + speed);
+                    helicopter.setLayoutX(helicopter.getLayoutX() + speed);
                 else if (up.get())
-                    helicopter.myhelicopter.setLayoutY(helicopter.myhelicopter.getLayoutY() - speed);
+                    helicopter.setLayoutY(helicopter.getLayoutY() - speed);
                 else if (down.get())
-                    helicopter.myhelicopter.setLayoutY(helicopter.myhelicopter.getLayoutY() + speed);
-                //move = 4 * (key(KeyCode.LEFT) - key(KeyCode.RIGHT));
-
+                    helicopter.setLayoutY(helicopter.getLayoutY() + speed);
             }
         };
         scene.setOnKeyPressed(e -> {
@@ -233,6 +216,12 @@ class Game {
                 down.set(false);
         });
         loop.start();
+    }
+    public void init(Pane parent) {
+        parent.getChildren().clear();
+
+        parent.getChildren().addAll(helicopter,helipad,helipad.inner,
+                pond, clouds);
     }
 }
 
