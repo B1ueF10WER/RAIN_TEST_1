@@ -263,10 +263,26 @@ class Game {
                 if (left.get()) {
                     helicopter.setLayoutX(helicopter.getLayoutX() - speed);
                     helicopter.setTranslateX(helicopter.getTranslateX() - speed);
+                    if (up.get()) {
+                        helicopter.setTranslateY(helicopter.getTranslateY() - speed);
+                        helicopter.rotate.setAngle(helicopter.rotate.getAngle()-1);
+                    }
+                    if (down.get()) {
+                        helicopter.setTranslateY(helicopter.getTranslateY() + speed);
+                        helicopter.rotate.setAngle(helicopter.rotate.getAngle()-1);
+                    }
                 }
                 else if (right.get()) {
                     helicopter.setLayoutX(helicopter.getLayoutX() + speed);
                     helicopter.setTranslateX(helicopter.getTranslateX() + speed);
+                    if (up.get()) {
+                        helicopter.setTranslateY(helicopter.getTranslateY() - speed);
+                        helicopter.rotate.setAngle(helicopter.rotate.getAngle()+1);
+                    }
+                    if (down.get()) {
+                        helicopter.setTranslateY(helicopter.getTranslateY() + speed);
+                        helicopter.rotate.setAngle(helicopter.rotate.getAngle()+1);
+                    }
                 }
                 else if (up.get())
                     helicopter.setLayoutY(helicopter.getLayoutY() - speed);
@@ -275,6 +291,16 @@ class Game {
                 else if (space.get()){
                     clouds.setSeed(1);
                     System.out.println("Space");
+                }
+                /*
+                if (left.get() && up.get() || right.get() && up.get()) {
+                    helicopter.setTranslateY(helicopter.getTranslateY() - speed);
+                    //helicopter.rotate.setAngle(helicopter.rotate.getAngle()+1);
+                }
+
+                 */
+                if (left.get() && down.get() || right.get() && down.get()) {
+                    helicopter.setTranslateY(helicopter.getTranslateY() + speed);
                 }
                 /*
                 while (clouds.size() < cloudCount) {
