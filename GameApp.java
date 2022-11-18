@@ -68,6 +68,9 @@ abstract class GameObject extends Group {
     void add(Node node) {this.getChildren().add(node);}
     void setSeed(int seed) {finalSeed+=seed;}
     int getSeed() {return finalSeed;}
+    static double rand(double min, double max) {
+        return Math.random() * (max - min) + min;
+    }
 
 }
 class Pond extends GameObject {
@@ -157,6 +160,11 @@ class Cloud extends GameObject {
                 Math.random();
         return toReturn;
     }
+    static Cloud make(){
+        double xPos = rand(20,30);
+        double yPos = rand(10,19);
+        return new Cloud(xPos,yPos, (int)rand(10,50));
+    }
 }
 class Helipad extends Rectangle {
     Circle inner = new Circle();
@@ -239,8 +247,8 @@ class Game {
         helicopter.head.setX(size.getX()/100 - 8);
         helicopter.head.setY(size.getY()/100 - 39);
 
-        //Group gCloud = new Group();
-        //List<Cloud> clouds = new LinkedList<>();
+        Group gCloud = new Group();
+        List<Cloud> clouds = new LinkedList<>();
 
         AnimationTimer loop = new AnimationTimer() {
             double old = -1;
@@ -289,7 +297,7 @@ class Game {
                 else if (down.get())
                     helicopter.setLayoutY(helicopter.getLayoutY() + speed);
                 else if (space.get()){
-                    clouds.setSeed(1);
+                    //clouds.setSeed(1);
                     System.out.println("Space");
                 }
                 /*
@@ -299,14 +307,15 @@ class Game {
                 }
 
                  */
+                /*
                 if (left.get() && down.get() || right.get() && down.get()) {
                     helicopter.setTranslateY(helicopter.getTranslateY() + speed);
                 }
-                /*
+                */
                 while (clouds.size() < cloudCount) {
-                    clouds.add(Cloud.make)
+                    clouds.add(Cloud.make());
                 }
-                 */
+
             }
         };
         scene.setOnKeyPressed(e -> {
