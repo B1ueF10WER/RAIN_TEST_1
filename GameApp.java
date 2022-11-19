@@ -120,7 +120,8 @@ class Cloud extends GameObject {
     Circle aCloud = new Circle();
     Label percentage = new Label();
     private int finalSeed;
-    public Cloud(double sizeX, double sizeY, int seed) {
+    public Cloud(double sizeX, double sizeY, int seed, Label thisPercent) {
+        percentage = thisPercent;
         aCloud.setRadius(Math.random()*25*Math.PI);
         aCloud.setCenterX(rand()*sizeX/2);
         aCloud.setCenterY(rand()*sizeY/2);
@@ -163,16 +164,22 @@ class Cloud extends GameObject {
     static Cloud make(){
         double xPos = rand(20,30);
         double yPos = rand(10,19);
-        return new Cloud(xPos,yPos, (int)rand(10,50));
+        return new Cloud(xPos,yPos, (int)rand(10,50), new Label());
     }
 }
 class Helipad extends Rectangle {
     Circle inner = new Circle();
-    public Helipad() {
+    public Helipad(int sizeX, int sizeY) {
         setWidth(100);
         setHeight(100);
         setStroke(Color.YELLOW);
         inner.setStroke(Color.YELLOW);
+
+        setX(sizeX/2.5);
+        setY(sizeY - 120);
+        inner.setRadius(40);
+        inner.setCenterX((sizeX +125)/2.5);
+        inner.setCenterY(sizeY - 70);
     }
 }
 class Helicopter extends GameObject {
@@ -180,7 +187,7 @@ class Helicopter extends GameObject {
     Ellipse myhelicopter;
     Rectangle head = new Rectangle();
     Label text = new Label();
-    public Helicopter() {
+    public Helicopter(double posX, double posY) {
         //xAxis = new Line(-125,0,125,0);
         super();
         myhelicopter = new Ellipse();
@@ -189,16 +196,61 @@ class Helicopter extends GameObject {
         myhelicopter.setRadiusX(15);
         myhelicopter.setRadiusY(15);
 
+        myhelicopter.setLayoutX(posX);
+        myhelicopter.setLayoutY(posY);
+
         text.setFont(Font.font(20));
+        text.setTranslateX(posX - 10);
+        text.setTranslateY(posY - 10);
+        text.setTextFill(Color.MAGENTA);
 
         head.setWidth(10);
         head.setHeight(25);
+        head.setX(posX - 8);
+        head.setY(posY - 39);
+
         head.setStroke(Color.MAGENTA);
         head.setFill(Color.MAGENTA);
 
         add(myhelicopter);
         add(text);
         add(head);
+    }
+    public void play(double speed, BooleanProperty left,
+                     BooleanProperty right, BooleanProperty up,
+                     BooleanProperty down, BooleanProperty space) {
+        if (left.get()) {
+            setLayoutX(getLayoutX() - speed);
+            setTranslateX(getTranslateX() - speed);
+            if (up.get()) {
+                setTranslateY(getTranslateY() - speed);
+                rotate.setAngle(rotate.getAngle()-1);
+            }
+            if (down.get()) {
+                setTranslateY(getTranslateY() + speed);
+                rotate.setAngle(rotate.getAngle()-1);
+            }
+        }
+        else if (right.get()) {
+            setLayoutX(getLayoutX() + speed);
+            setTranslateX(getTranslateX() + speed);
+            if (up.get()) {
+                setTranslateY(getTranslateY() - speed);
+                rotate.setAngle(rotate.getAngle()+1);
+            }
+            if (down.get()) {
+                setTranslateY(getTranslateY() + speed);
+                rotate.setAngle(rotate.getAngle()+1);
+            }
+        }
+        else if (up.get())
+            setLayoutY(getLayoutY() - speed);
+        else if (down.get())
+            setLayoutY(getLayoutY() + speed);
+        else if (space.get()){
+            //clouds.setSeed(1);
+            System.out.println("Space");
+        }
     }
 }
 class Background extends Pane {
@@ -214,11 +266,15 @@ class Game {
     Point2D size = new Point2D(400,600);
     Scene scene = new Scene(root,size.getX(),size.getY());
     Background background = new Background();
-
-    Helipad helipad = new Helipad();
-    Helicopter helicopter = new Helicopter();
+    Helipad helipad = new Helipad((int)size.getX(), (int)size.getY());
+    Helicopter helicopter = new Helicopter(helipad.getX(),helipad.getY());
     Pond pond = new Pond(size.getX(),size.getY());
-    Cloud clouds = new Cloud(size.getX(),size.getY(), 0);
+    Cloud clouds = new Cloud(size.getX(),size.getY(), 0,
+            new Label());
+    Set<KeyCode> keysDown = new HashSet<>();
+    int key(KeyCode k) { // sees if a key is down
+        return keysDown.contains(k) ? 1: 0;
+    }
 
     BooleanProperty left = new SimpleBooleanProperty();
     BooleanProperty right = new SimpleBooleanProperty();
@@ -228,28 +284,10 @@ class Game {
     public Game() {
         init(root);
         //root.setStyle("-fx-background-color: black;");
-        root.getChildren().add(background.iView);
-
-        helipad.setX(size.getX()/2.5);
-        helipad.setY(size.getY() - 120);
-        helipad.inner.setRadius(40);
-        helipad.inner.setCenterX((size.getX() +125)/2.5);
-        helipad.inner.setCenterY(size.getY() - 70);
-
-/*
-        root.getChildren().addAll(helipad,helipad.inner,
-                helicopter, pond, clouds,
-                helicopter.myhelicopter,
-                helicopter.text);
- */
-        helicopter.setLayoutX(size.getX()/2);
-        helicopter.setLayoutY(size.getY()/2);
-        helicopter.head.setX(size.getX()/100 - 8);
-        helicopter.head.setY(size.getY()/100 - 39);
+        //root.getChildren().add(background.iView);
 
         Group gCloud = new Group();
         List<Cloud> clouds = new LinkedList<>();
-
         AnimationTimer loop = new AnimationTimer() {
             double old = -1;
             double elapsedTime = 0;
@@ -262,44 +300,11 @@ class Game {
                 old = nano;
                 elapsedTime += delta*500;
 
-                helicopter.text.setTranslateX(36);
-                helicopter.text.setTextFill(Color.MAGENTA);
                 helicopter.text.setText(String.format(
                         "F: %.2f", 25000 - elapsedTime));
 
-
-                if (left.get()) {
-                    helicopter.setLayoutX(helicopter.getLayoutX() - speed);
-                    helicopter.setTranslateX(helicopter.getTranslateX() - speed);
-                    if (up.get()) {
-                        helicopter.setTranslateY(helicopter.getTranslateY() - speed);
-                        helicopter.rotate.setAngle(helicopter.rotate.getAngle()-1);
-                    }
-                    if (down.get()) {
-                        helicopter.setTranslateY(helicopter.getTranslateY() + speed);
-                        helicopter.rotate.setAngle(helicopter.rotate.getAngle()-1);
-                    }
-                }
-                else if (right.get()) {
-                    helicopter.setLayoutX(helicopter.getLayoutX() + speed);
-                    helicopter.setTranslateX(helicopter.getTranslateX() + speed);
-                    if (up.get()) {
-                        helicopter.setTranslateY(helicopter.getTranslateY() - speed);
-                        helicopter.rotate.setAngle(helicopter.rotate.getAngle()+1);
-                    }
-                    if (down.get()) {
-                        helicopter.setTranslateY(helicopter.getTranslateY() + speed);
-                        helicopter.rotate.setAngle(helicopter.rotate.getAngle()+1);
-                    }
-                }
-                else if (up.get())
-                    helicopter.setLayoutY(helicopter.getLayoutY() - speed);
-                else if (down.get())
-                    helicopter.setLayoutY(helicopter.getLayoutY() + speed);
-                else if (space.get()){
-                    //clouds.setSeed(1);
-                    System.out.println("Space");
-                }
+                helicopter.play(speed,left,right,up,down,space);
+                //---
                 /*
                 if (left.get() && up.get() || right.get() && up.get()) {
                     helicopter.setTranslateY(helicopter.getTranslateY() - speed);
@@ -348,23 +353,16 @@ class Game {
         parent.getChildren().clear();
 
         parent.getChildren().addAll(helicopter,helipad,helipad.inner,
-                pond, clouds);
+                pond, clouds,background,background.iView);
     }
 }
 
 public class GameApp extends Application {
     Game newGame;
-
-    Set<KeyCode> keysDown = new HashSet<>();
-    int key(KeyCode k) { // sees if a key is down
-        return keysDown.contains(k) ? 1: 0;
-    }
     public void start(Stage stage) {
         newGame = new Game();
-        //newGame.scene.setFill(Color.WHITE);
         stage.setScene(newGame.scene);
         stage.setTitle("mAkE iT rAiN");
-
         stage.show();
     }
     public static void main(String[] args) {launch(args);}
